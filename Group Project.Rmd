@@ -384,122 +384,76 @@ tuned_model <- tuneRF(trainData[,-1], trainData$Diabetes_012, stepFactor = 1.5, 
 ```
 
 ```{r}
-# the tuned model
-# extract the best mtry value from the tuned model
-best_mtry <- tuned_model$bestTune$mtry
-
-# Now, rebuild the model with the best mtry value using the train function
-set.seed(123)
-final_model_rf <- train(Diabetes_012 ~ ., data = trainData, method = "rf", trControl = trainControl(method = "cv", number = 10), tuneGrid = data.frame(.mtry=best_mtry))
-
-```
-
-```{r}
 # Model Evaluation
 
 # Generate class predictions
-final_predictions <- predict(final_model_rf, testData)
+predictions <- predict(model_rf, testData)
+# Generate predicted probabilities
+prob_predictions <- predict(model_rf, testData, type = "prob")
 
-# Generate predicted probabilities for ROC analysis
-final_prob_predictions <- predict(final_model_rf, testData, type = "prob")
-
-# Ensure final_predictions are factors with the same levels as the actual data
-final_predictions <- factor(final_predictions, levels = levels(testData$Diabetes_012))
+# Ensure predictions are factors with the same levels as the actual data
+predictions <- factor(predictions, levels = levels(testData$Diabetes_012))
 
 # Confusion Matrix
-final_confMat <- confusionMatrix(final_predictions, testData$Diabetes_012)
-print(final_confMat)
+confMat <- confusionMatrix(predictions, testData$Diabetes_012)
+print(confMat)
 
 # Overall Accuracy
-final_accuracy <- sum(final_predictions == testData$Diabetes_012) / length(final_predictions)
-print(paste("Accuracy:", final_accuracy))
+accuracy <- sum(predictions == testData$Diabetes_012) / length(predictions)
+print(paste("Accuracy:", accuracy))
 
 # Function to calculate ROC and AUC for each class
 calculate_roc_auc <- function(class, predictions, actual_labels) {
-  # Convert to binary format (one-vs-rest approach)
-  binary_response <- actual_labels == class
-  # Extract predicted probabilities for the current class
-  predicted_probabilities <- predictions[, as.character(class)]
-  # Calculate ROC curve and AUC
-  roc_curve <- roc(response = binary_response, predictor = predicted_probabilities)
+  binary_response <- as.numeric(actual_labels == class)
+  roc_curve <- roc(binary_response, predictions[, as.character(class)])
   auc_value <- auc(roc_curve)
-  list(roc_curve = roc_curve, auc = auc_value)
+  list("roc_curve" = roc_curve, "auc" = auc_value)
 }
 
 # Calculating ROC and AUC for each class
-final_roc_results <- lapply(levels(testData$Diabetes_012), calculate_roc_auc, final_prob_predictions, testData$Diabetes_012)
+roc_results <- lapply(levels(testData$Diabetes_012), calculate_roc_auc, prob_predictions, testData$Diabetes_012)
 
 # Printing AUC values for each class
-sapply(final_roc_results, function(x) x$auc)
+sapply(roc_results, function(x) x$auc)
 
+# Precision, Recall, and F1-Score
 # Function to calculate precision, recall, and F1-score for a given class
 calculate_metrics <- function(class, predictions, actual_labels) {
-  # Convert to binary format (one-vs-rest approach)
-  binary_predictions <- predictions == class
-  binary_actual_labels <- actual_labels == class
-  # Calculate metrics
-  precision <- posPredValue(binary_predictions, binary_actual_labels)
-  recall <- sensitivity(binary_predictions, binary_actual_labels)
+  # Convert to binary format (one-vs-rest approach) and then to factors
+  binary_predictions <- factor(as.numeric(predictions == class), levels = c(0, 1))
+  binary_actual_labels <- factor(as.numeric(actual_labels == class), levels = c(0, 1))
+
+  # Calculate precision, recall, and F1-score
+  precision <- posPredValue(binary_predictions, binary_actual_labels, positive = "1")
+  recall <- sensitivity(binary_predictions, binary_actual_labels, positive = "1")
   f1_score <- ifelse((precision + recall) > 0, (2 * precision * recall) / (precision + recall), 0)
-  c(Precision = precision, Recall = recall, F1_Score = f1_score)
+
+  return(c(Precision = precision, Recall = recall, F1_Score = f1_score))
 }
 
 # Calculating metrics for each class
-final_class_metrics <- sapply(levels(testData$Diabetes_012), function(class) calculate_metrics(class, final_predictions, testData$Diabetes_012))
+class_metrics <- sapply(levels(predictions), function(class) calculate_metrics(class, predictions, testData$Diabetes_012))
 
 # Print the metrics for each class
-print(final_class_metrics)# Generate class predictions
-final_predictions <- predict(final_model_rf, testData)
-
-# Generate predicted probabilities for ROC analysis
-final_prob_predictions <- predict(final_model_rf, testData, type = "prob")
-
-# Ensure final_predictions are factors with the same levels as the actual data
-final_predictions <- factor(final_predictions, levels = levels(testData$Diabetes_012))
-
-# Confusion Matrix
-final_confMat <- confusionMatrix(final_predictions, testData$Diabetes_012)
-print(final_confMat)
-
-# Overall Accuracy
-final_accuracy <- sum(final_predictions == testData$Diabetes_012) / length(final_predictions)
-print(paste("Accuracy:", final_accuracy))
-
-# Function to calculate ROC and AUC for each class
-calculate_roc_auc <- function(class, predictions, actual_labels) {
-  # Convert to binary format (one-vs-rest approach)
-  binary_response <- actual_labels == class
-  # Extract predicted probabilities for the current class
-  predicted_probabilities <- predictions[, as.character(class)]
-  # Calculate ROC curve and AUC
-  roc_curve <- roc(response = binary_response, predictor = predicted_probabilities)
-  auc_value <- auc(roc_curve)
-  list(roc_curve = roc_curve, auc = auc_value)
-}
-
-# Calculating ROC and AUC for each class
-final_roc_results <- lapply(levels(testData$Diabetes_012), calculate_roc_auc, final_prob_predictions, testData$Diabetes_012)
-
-# Printing AUC values for each class
-sapply(final_roc_results, function(x) x$auc)
-
-# Function to calculate precision, recall, and F1-score for a given class
+print(class_metrics)
 calculate_metrics <- function(class, predictions, actual_labels) {
-  # Convert to binary format (one-vs-rest approach)
-  binary_predictions <- predictions == class
-  binary_actual_labels <- actual_labels == class
-  # Calculate metrics
-  precision <- posPredValue(binary_predictions, binary_actual_labels)
-  recall <- sensitivity(binary_predictions, binary_actual_labels)
+  # Convert to binary format (one-vs-rest approach) and then to factors
+  binary_predictions <- factor(as.numeric(predictions == class), levels = c(0, 1))
+  binary_actual_labels <- factor(as.numeric(actual_labels == class), levels = c(0, 1))
+
+  # Calculate precision, recall, and F1-score
+  precision <- posPredValue(binary_predictions, binary_actual_labels, positive = "1")
+  recall <- sensitivity(binary_predictions, binary_actual_labels, positive = "1")
   f1_score <- ifelse((precision + recall) > 0, (2 * precision * recall) / (precision + recall), 0)
-  c(Precision = precision, Recall = recall, F1_Score = f1_score)
+
+  return(c(Precision = precision, Recall = recall, F1_Score = f1_score))
 }
 
 # Calculating metrics for each class
-final_class_metrics <- sapply(levels(testData$Diabetes_012), function(class) calculate_metrics(class, final_predictions, testData$Diabetes_012))
+class_metrics <- sapply(levels(predictions), function(class) calculate_metrics(class, predictions, testData$Diabetes_012))
 
 # Print the metrics for each class
-print(final_class_metrics)
+print(class_metrics)
 
 ```
 
