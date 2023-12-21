@@ -380,17 +380,87 @@ model_rf <- train(Diabetes_012 ~ ., data = trainData, method = "rf", trControl =
 # Model Tuning (Hyperparameter Optimization)
 tuned_model <- tuneRF(trainData[,-1], trainData$Diabetes_012, stepFactor = 1.5, improve = 0.01, ntreeTry = 500, trace = TRUE)
 
-# Model Evaluation
-predictions <- predict(model_rf, testData)
-confMat <- confusionMatrix(predictions, testData$Diabetes_012)
-roc_curve <- roc(response = testData$Diabetes_012, predictor = as.numeric(predictions), levels = levels(testData$Diabetes_012))
-auc_value <- auc(roc_curve)
-print(confMat)
-print(auc_value)
 
-# Feature Importance
-importance_matrix <- importance(model_rf)
-varImpPlot(model_rf, main = "Variable Importance in Random Forest")
+```
+
+```{r}
+# Model Evaluation
+
+# Generate class predictions
+predictions <- predict(model_rf, testData)
+# Generate predicted probabilities
+prob_predictions <- predict(model_rf, testData, type = "prob")
+
+# Ensure predictions are factors with the same levels as the actual data
+predictions <- factor(predictions, levels = levels(testData$Diabetes_012))
+
+# Confusion Matrix
+confMat <- confusionMatrix(predictions, testData$Diabetes_012)
+print(confMat)
+
+# Overall Accuracy
+accuracy <- sum(predictions == testData$Diabetes_012) / length(predictions)
+print(paste("Accuracy:", accuracy))
+
+# Function to calculate ROC and AUC for each class
+calculate_roc_auc <- function(class, predictions, actual_labels) {
+  binary_response <- as.numeric(actual_labels == class)
+  roc_curve <- roc(binary_response, predictions[, as.character(class)])
+  auc_value <- auc(roc_curve)
+  list("roc_curve" = roc_curve, "auc" = auc_value)
+}
+
+# Calculating ROC and AUC for each class
+roc_results <- lapply(levels(testData$Diabetes_012), calculate_roc_auc, prob_predictions, testData$Diabetes_012)
+
+# Printing AUC values for each class
+sapply(roc_results, function(x) x$auc)
+
+# Precision, Recall, and F1-Score
+# Function to calculate precision, recall, and F1-score for a given class
+calculate_metrics <- function(class, predictions, actual_labels) {
+  # Convert to binary format (one-vs-rest approach) and then to factors
+  binary_predictions <- factor(as.numeric(predictions == class), levels = c(0, 1))
+  binary_actual_labels <- factor(as.numeric(actual_labels == class), levels = c(0, 1))
+
+  # Calculate precision, recall, and F1-score
+  precision <- posPredValue(binary_predictions, binary_actual_labels, positive = "1")
+  recall <- sensitivity(binary_predictions, binary_actual_labels, positive = "1")
+  f1_score <- ifelse((precision + recall) > 0, (2 * precision * recall) / (precision + recall), 0)
+
+  return(c(Precision = precision, Recall = recall, F1_Score = f1_score))
+}
+
+# Calculating metrics for each class
+class_metrics <- sapply(levels(predictions), function(class) calculate_metrics(class, predictions, testData$Diabetes_012))
+
+# Print the metrics for each class
+print(class_metrics)
+calculate_metrics <- function(class, predictions, actual_labels) {
+  # Convert to binary format (one-vs-rest approach) and then to factors
+  binary_predictions <- factor(as.numeric(predictions == class), levels = c(0, 1))
+  binary_actual_labels <- factor(as.numeric(actual_labels == class), levels = c(0, 1))
+
+  # Calculate precision, recall, and F1-score
+  precision <- posPredValue(binary_predictions, binary_actual_labels, positive = "1")
+  recall <- sensitivity(binary_predictions, binary_actual_labels, positive = "1")
+  f1_score <- ifelse((precision + recall) > 0, (2 * precision * recall) / (precision + recall), 0)
+
+  return(c(Precision = precision, Recall = recall, F1_Score = f1_score))
+}
+
+# Calculating metrics for each class
+class_metrics <- sapply(levels(predictions), function(class) calculate_metrics(class, predictions, testData$Diabetes_012))
+
+# Print the metrics for each class
+print(class_metrics)
+
+```
+
+```{r}
+length(predictions)
+length(testData$Diabetes_012)
+
 ```
 
 ------------------------------------------------------------------------
