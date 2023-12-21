@@ -1,0 +1,368 @@
+---
+title: "WQD7004 Group Project"
+output: html_document
+runtime: shiny
+---
+
+### Group Member:
+1) Muhammad Imran Haiqal bin Azmi    (17113547)
+2) Tasslim Bin Mansoor Ali           (23056322)
+3) Muhammad Adib Bin Mohd Akbar      (17119253)
+4) Muhammad Aiman bin Zolkifli       (22080779)
+5) Nur Qistina binti Roslan          (22089573)
+
+### Title
+Risk of Diabetes Prediction
+
+### Introduction
+Diabetes is a chronic disease associated with individuals inability to effectively regulate the glucose level in the blood, leading to diminished quality of life and reduced longevity. Individuals that are diagnosed with diabetes often suffer many health complications including heart disease, chronic kidney disease, nerve damage and mental health issues. The challenge is that diabetes patients are frequently diagnosed in the later stages of the disease when significant complications have already developed. Therefore, there is a need for a highly accurate model that can establish strong relationships between individuals' background factors and risk of diabetes. 
+
+### Dataset
+**Diabetes Health Indicators Dataset**
+
+Source: https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data
+
+### Objective
+1) To identify and quantify how certain individuals background (smoking habit, blood pressure, cholesterol levels) contribute to the progression of diabetes.
+2) To classifies individuals based on their risk of developing diabetes, considering their background.
+3) To predict the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease)
+
+***
+### Libraries
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(caret)
+library(dplyr)
+library(Metrics)
+library(e1071)
+library(rpart)
+```
+
+***
+### Load our Dataset
+```{r}
+data<-read_csv("diabetes.csv")
+```
+
+***
+### Data Understanding
+```{r}
+# Summary of dataset
+glimpse(data)
+
+# Structure of dataset
+str(data)
+
+# Check if there is any NA value
+colSums(is.na(data))
+
+# Check if there is any empty string value
+colSums(data=="")
+
+# Check if there is any zero value
+#colSums(data==0)
+
+
+```
+
+***
+### Exploratory Data Analysis (EDA)
+```{r}
+# Load the corrplot package
+library(corrplot)
+
+# Generate a random dataset for demonstration purposes
+set.seed(123)
+
+# Compute the correlation matrix
+cor_matrix <- cor(data)
+
+# Create a correlation heatmap
+corrplot(cor_matrix, method = "color", type = "upper", order = "hclust", tl.cex = 0.7)
+
+# Exploratory Data Analysis (EDA)
+# New Column to determine the diabetes
+data$diabetes_binary <- ifelse(data$Diabetes_012 > 0, "Diabetic", "Non-Diabetic")
+data$diabetes_binary <- factor(data$diabetes_binary)
+
+# Count the values of 
+category_count <- table(data$diabetes_binary)
+print(category_count)
+
+# Plot the bar chart
+barplot(category_count, main = "Bar Chart of Diabetes", xlab = "Categories", ylab = "Frequency", col = "skyblue")
+
+# Plot a pie chart
+pie(category_count, main = "Pie Chart of Diabetes", col = rainbow(length(category_count)))
+
+# Relation of Diabetes with Blood Pressure
+contingency_table <- table(data$diabetes_binary, data$HighBP)
+df_contingency <- as.data.frame.matrix(contingency_table)
+barplot(as.matrix(df_contingency), beside = TRUE, legend.text = TRUE, col = c("red", "blue"),
+        main = "Relationship between Diabetes and BP Levels",
+        xlab = "Diabetes Status", ylab = "Count")
+
+
+# Relation of High Cholestrol with Diabetes
+cholesterol_counts <- table(data$HighChol)
+print(cholesterol_counts)
+pie(cholesterol_counts, main = "Pie Chart: Cholesterol Levels",
+    labels = c("Normal Cholesterol", "High Cholesterol"),
+    col = c("red", "lightblue"))
+pie(category_count, main = "Pie Chart of Diabetes", col = rainbow(length(category_count)))
+
+# Relation of High BP with Diabetes
+contingency_table1 <- table(data$diabetes_binary, data$HighChol)
+df_contingency1 <- as.data.frame.matrix(contingency_table1)
+barplot(as.matrix(df_contingency1), beside = TRUE, legend.text = TRUE, col = c("red", "blue"),
+        main = "Relationship between Diabetes and BP Levels",
+        xlab = "Diabetes Status", ylab = "Count")
+
+# Binning
+bins <- c(0, 18.5, 25, 30, 35, 40, Inf)
+# Create a new variable "BMI_category" based on the bins
+data$BMI_category <- cut(data$BMI, bins, labels = c("Underweight", "Normal", "Overweight", "Obese I", "Obese II", "Obese III"))
+
+# Filtering the dataset to diabetes patients
+#data <- data %>% filter(data$Diabetes_012==1 | data$Diabetes_012==2 )
+
+
+
+# Regression Model
+# Exploratory Data Analysis
+# BMI vs General Health
+ggplot(data, aes(x = GenHlth, fill = BMI_category)) +
+  geom_bar(position = "dodge", stat = "count") +
+  labs(title = "Bar Plot of BMI Categories vs. General Health",
+       x = "BMI Category",
+       y = "Count") +
+  theme_minimal()
+
+#Smoker vs diabetes
+smoker_counts <- table(data$Smoker)
+print(smoker_counts)
+pie(smoker_counts,  main = "Smoking pie chart",col = rainbow(length(smoker_counts)))
+legend("topright", c("Non-Smoker","Smoker"), cex = 0.8,
+       fill = rainbow(length(smoker_counts)))
+
+contingency_table2 <- table(data$diabetes_binary, data$Smoker)
+df_contingency2 <- as.data.frame.matrix(contingency_table2)
+df_contingency2
+barplot(as.matrix(df_contingency2), beside = TRUE, legend.text = TRUE, col = c("red", "blue"),
+        main = "Relationship between Diabetes and Smoking",
+        xlab = "Diabetes Status", ylab = "Count")
+# According to this data, smoking has minor effect on diabetes
+
+#Heavy Alcohol Consumption vs Diabetes
+alcohol_counts <- table(data$HvyAlcoholConsump)
+print(alcohol_counts)
+pie(alcohol_counts,  main = "alcohol pie chart",col = rainbow(length(alcohol_counts)))
+legend("topright", c("Non HvyAlcoholConsumption","HvyAlcoholConsumption"), cex = 0.8,
+       fill = rainbow(length(alcohol_counts)))
+
+contingency_table3 <- table(data$diabetes_binary, data$HvyAlcoholConsump)
+df_contingency3 <- as.data.frame.matrix(contingency_table3)
+df_contingency3
+barplot(as.matrix(df_contingency3), beside = TRUE, legend.text = TRUE, col = c("red", "blue"),
+        main = "Relationship between Diabetes and Heavy Alcohol Consumption",
+        xlab = "Diabetes Status", ylab = "Frequency")
+#According to this data, there is insufficient data to prove that heavy alcohol effects diabetes.
+
+#Lifestyle
+#physactivity
+contingency_table4 <- table(data$diabetes_binary, data$PhysActivity)
+df_contingency4 <- as.data.frame.matrix(contingency_table4)
+df_contingency4
+barplot(as.matrix(df_contingency4), beside = TRUE, legend.text = TRUE, col = c("red", "blue"),
+        main = "Relationship between Diabetes and PhysActivity",
+        xlab = "Diabetes Status", ylab = "Count")
+
+#Lifestyle
+#fruits
+contingency_table5 <- table(data$diabetes_binary, data$Fruits)
+df_contingency5 <- as.data.frame.matrix(contingency_table5)
+df_contingency5
+barplot(as.matrix(df_contingency5), beside = TRUE, legend.text = TRUE, col = c("red", "blue"),
+        main = "Relationship between Diabetes and Fruits",
+        xlab = "Diabetes Status", ylab = "Count")
+
+#Lifestyle
+#Veggies
+contingency_table6 <- table(data$diabetes_binary, data$Veggies)
+df_contingency6 <- as.data.frame.matrix(contingency_table6)
+df_contingency6
+barplot(as.matrix(df_contingency4), beside = TRUE, legend.text = TRUE, col = c("red", "blue"),
+        main = "Relationship between Diabetes and Veggies",
+        xlab = "Diabetes Status", ylab = "Count")
+
+#Lifestyle practises such as physical activity and consumption of fruits and veggies reduces the risk of diabetes
+
+#Gender and diabetes
+ggplot(data, aes(x = Sex, fill = diabetes_binary)) +
+  geom_bar(position = "dodge", color = "black") +
+  labs(title = 'Diabetes Disease Frequency for Sex',
+       x = 'Sex (0 = Female, 1 = Male)',
+       y = 'Frequency') +
+  scale_fill_manual(values = c('#AA1111', '#1CA53B'),
+                    name = "Diabetes Status",
+                    labels = c("Have Diabetic", "Healthy")) +
+  theme_minimal()
+#We can see that female are not just more diabetic than men but they are also healthier
+
+#Relationship between bmi and diabetes
+ggplot(data, aes(x = BMI, fill = diabetes_binary)) +
+  geom_bar(position = "dodge", color = "black") +
+  labs(title = 'Diabetes Disease Frequency for BMI',
+       x = 'BMI',
+       y = 'Frequency') +
+  scale_fill_manual(values = c('#AA1111', '#1CA53B'),
+                    name = "Diabetes Status",
+                    labels = c("Have Diabetic", "Healthy")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+#People range between 24-33 are more prone to have diabetes
+
+#relationship between income and diabetes
+ggplot(data, aes(x = Income, fill = diabetes_binary)) +
+  geom_bar(position = "dodge", color = "black") +
+  labs(title = 'Diabetes Disease Frequency for Income',
+       x = 'Income',
+       y = 'Frequency') +
+  scale_fill_manual(values = c('#AA1111', '#1CA53B'),
+                    name = "Diabetes Status",
+                    labels = c("Have Diabetic", "Healthy")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+#We can say that people with higher income are more diabetic
+```
+
+***
+### Train-test Preparation
+```{r}
+set.seed(123)  # Set a random seed for reproducibility
+train_index <- createDataPartition(data$Health_Complication, p = 0.6, list = FALSE)
+train_data <- data[train_index, ]
+temp_data <- data[-train_index, ]
+
+# Create validation and test sets
+validation_index <- createDataPartition(temp_data$Health_Complication, p = 0.5, list = FALSE)
+validation_data <- temp_data[validation_index, ]
+test_data <- temp_data[-validation_index, ]
+
+```
+
+***
+### Regression Model
+```{r}
+# Filtering the dataset to non-diabetes and pre-diabetes patients
+data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
+
+# Mutate new column that combine all health complications
+data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack)
+
+#Linear Regression of Health Complication with Diabetes
+
+# Define the model formula
+model_formula <- Health_Complication ~ .
+
+# Train the linear regression model
+linear_model <- lm(model_formula, data = train_data)
+
+# Summarize the model 
+summary(linear_model)
+
+# Make predictions on the test set
+predictions <- predict(linear_model, newdata = test_data)
+
+# Evaluate the model performance
+mse <- mean((predictions - test_data$Health_Complication)^2)
+rmse <- sqrt(mse)
+print(paste("Mean Squared Error:", mse))
+print(paste("Root Mean Squared Error:", rmse))
+
+```
+
+### Support Vector Machine Regression
+```{r}
+#Decision Tree Regression
+tree_model <- rpart(Health_Complication ~ . , data = train_data, method = "anova")
+tree_prediction <- predict(tree_model, newdata = test_data)
+mse <- mean((tree_prediction - test_data$Health_Complication)^2)
+rmse <- sqrt(mse)
+print(paste("Mean Squared Error:", mse))
+print(paste("Root Mean Squared Error:", rmse))
+```
+
+### Decision Tree Regression
+```{r}
+# SVM Model
+svm_model <- svm(Health_Complication~., data = train_data)
+svm_prediction <- predict(svm_model, newdata = test_data)
+mse <- mean((predictions - test_data$Health_Complication)^2)
+rmse <- sqrt(mse)
+print(paste("Mean Squared Error:", mse))
+print(paste("Root Mean Squared Error:", rmse))
+```
+
+***
+
+
+***
+### Conclusion
+
+In conclusion, we have predicted the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease) for our regression section. Based on our observation, the Support Vector Machine model is the best model to predict the progression rate of diabetes in individuals with the lowest MSE and RMSE value.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r eruptions, echo=FALSE}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+## Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r tabsets, echo=FALSE}
+shinyAppDir(
+  system.file("examples/06_tabsets", package = "shiny"),
+  options = list(
+    width = "100%", height = 550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+
+
