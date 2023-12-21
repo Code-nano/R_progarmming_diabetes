@@ -307,6 +307,40 @@ print(paste("Mean Squared Error:", mse))
 print(paste("Root Mean Squared Error:", rmse))
 ```
 
+###Classification method
+###Naive Bayes Model
+```{r}
+#naive bayes model
+install.packages("klaR")
+library(klaR)
+nb_model <- NaiveBayes(Health_Complication~., data=train_data)
+#make predictions
+nb_x_test <- test_data[,2:20]
+nb_y_test <- test_data[,1]
+predictions_nb <- predict(nb_model, nb_x_test)
+confusionMatrix(predictions_nb$class_nb, nb_y_test)
+```
+
+```{r}
+knn_model <- train(Health_Complication~., data = train_data, method = "knn")
+#make predictions
+knn_x_test <- test_data[,2:22]
+knn_y_test <- test_data[,1]
+predictions_knn <- predict(knn_model, knn_x_test)
+confusionMatrix(predictions_knn, knn_y_test)
+```
+
+```{r}
+#Random forest model
+install.packages("randomForest")
+library(randomForest)
+rf_model <- randomForest(Health_Complication~., data = train_data)
+rf_x_test <- test_data[,2:22]
+rf_y_test <- test_data[,22]
+predictions_rf <- predict(rf_model, rf_x_test)
+confusionMatrix(predictions_rf, rf_y_test)
+```
+
 ***
 
 
@@ -357,6 +391,8 @@ shinyAppDir(
   )
 )
 ```
+
+
 
 Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
 
