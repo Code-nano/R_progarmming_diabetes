@@ -28,20 +28,6 @@ Source: https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-da
 3) To predict the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease)
 
 ***
-### Install dependencies
-```{r}
-install.packages("ggplot2")
-install.packages("caret")
-install.packages("dplyr")
-install.packages("Metrics")
-install.packages("e1071")
-install.packages("rpart")
-install.packages("corrplot")
-install.packages("knitr")
-install.packages("shiny")
-install.packages("lattice")
-```
-***
 ### Libraries
 ```{r}
 library(tidyverse)
