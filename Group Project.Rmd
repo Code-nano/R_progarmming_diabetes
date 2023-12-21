@@ -5,30 +5,37 @@ runtime: shiny
 ---
 
 ### Group Member:
-1) Muhammad Imran Haiqal bin Azmi    (17113547)
-2) Tasslim Bin Mansoor Ali           (23056322)
-3) Muhammad Adib Bin Mohd Akbar      (17119253)
-4) Muhammad Aiman bin Zolkifli       (22080779)
-5) Nur Qistina binti Roslan          (22089573)
+
+1)  Muhammad Imran Haiqal bin Azmi (17113547)
+2)  Tasslim Bin Mansoor Ali (23056322)
+3)  Muhammad Adib Bin Mohd Akbar (17119253)
+4)  Muhammad Aiman bin Zolkifli (22080779)
+5)  Nur Qistina binti Roslan (22089573)
 
 ### Title
+
 Risk of Diabetes Prediction
 
 ### Introduction
-Diabetes is a chronic disease associated with individuals inability to effectively regulate the glucose level in the blood, leading to diminished quality of life and reduced longevity. Individuals that are diagnosed with diabetes often suffer many health complications including heart disease, chronic kidney disease, nerve damage and mental health issues. The challenge is that diabetes patients are frequently diagnosed in the later stages of the disease when significant complications have already developed. Therefore, there is a need for a highly accurate model that can establish strong relationships between individuals' background factors and risk of diabetes. 
+
+Diabetes is a chronic disease associated with individuals inability to effectively regulate the glucose level in the blood, leading to diminished quality of life and reduced longevity. Individuals that are diagnosed with diabetes often suffer many health complications including heart disease, chronic kidney disease, nerve damage and mental health issues. The challenge is that diabetes patients are frequently diagnosed in the later stages of the disease when significant complications have already developed. Therefore, there is a need for a highly accurate model that can establish strong relationships between individuals' background factors and risk of diabetes.
 
 ### Dataset
+
 **Diabetes Health Indicators Dataset**
 
-Source: https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data
+Source: <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data>
 
 ### Objective
-1) To identify and quantify how certain individuals background (smoking habit, blood pressure, cholesterol levels) contribute to the progression of diabetes.
-2) To classifies individuals based on their risk of developing diabetes, considering their background.
-3) To predict the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease)
 
-***
+1)  To identify and quantify how certain individuals background (smoking habit, blood pressure, cholesterol levels) contribute to the progression of diabetes.
+2)  To classifies individuals based on their risk of developing diabetes, considering their background.
+3)  To predict the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease)
+
+------------------------------------------------------------------------
+
 ### Libraries
+
 ```{r}
 library(tidyverse)
 library(ggplot2)
@@ -37,16 +44,23 @@ library(dplyr)
 library(Metrics)
 library(e1071)
 library(rpart)
+library(pROC)
+library(corrplot)
+library(randomForest)
 ```
 
-***
+------------------------------------------------------------------------
+
 ### Load our Dataset
+
 ```{r}
 data<-read_csv("diabetes.csv")
 ```
 
-***
+------------------------------------------------------------------------
+
 ### Data Understanding
+
 ```{r}
 # Summary of dataset
 glimpse(data)
@@ -66,8 +80,10 @@ colSums(data=="")
 
 ```
 
-***
+------------------------------------------------------------------------
+
 ### Exploratory Data Analysis (EDA)
+
 ```{r}
 # Load the corrplot package
 library(corrplot)
@@ -237,10 +253,15 @@ ggplot(data, aes(x = Income, fill = diabetes_binary)) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 
 #We can say that people with higher income are more diabetic
+
 ```
 
-***
+\
+
+------------------------------------------------------------------------
+
 ### Train-test Preparation
+
 ```{r}
 set.seed(123)  # Set a random seed for reproducibility
 train_index <- createDataPartition(data$Health_Complication, p = 0.6, list = FALSE)
@@ -254,8 +275,10 @@ test_data <- temp_data[-validation_index, ]
 
 ```
 
-***
+------------------------------------------------------------------------
+
 ### Regression Model
+
 ```{r}
 # Filtering the dataset to non-diabetes and pre-diabetes patients
 data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
@@ -286,6 +309,7 @@ print(paste("Root Mean Squared Error:", rmse))
 ```
 
 ### Support Vector Machine Regression
+
 ```{r}
 #Decision Tree Regression
 tree_model <- rpart(Health_Complication ~ . , data = train_data, method = "anova")
@@ -297,6 +321,7 @@ print(paste("Root Mean Squared Error:", rmse))
 ```
 
 ### Decision Tree Regression
+
 ```{r}
 # SVM Model
 svm_model <- svm(Health_Complication~., data = train_data)
@@ -307,10 +332,69 @@ print(paste("Mean Squared Error:", mse))
 print(paste("Root Mean Squared Error:", rmse))
 ```
 
-***
+### Classification Model
 
+#### Train-Test Preparation
 
-***
+```{r}
+# Load and Prepare Data
+data <- read.csv("diabetes.csv")  
+data$Diabetes_012 <- as.factor(data$Diabetes_012)  
+
+# Handling Missing Values
+data <- na.omit(data)  
+
+# Exploratory Data Analysis
+# Histogram for BMI by Diabetes Category
+ggplot(data, aes(x = BMI, fill = Diabetes_012)) + 
+    geom_histogram(bins = 30) + 
+    facet_wrap(~Diabetes_012) + 
+    ggtitle("BMI Distribution by Diabetes Category") +
+    xlab("BMI") + 
+    ylab("Count")
+
+# Correlation Matrix for Numeric Features
+numeric_data <- data %>% select_if(is.numeric)
+correlationMatrix <- cor(numeric_data)
+corrplot(correlationMatrix, title = "Correlation Matrix for Numeric Features", type = "upper", order = "hclust", tl.cex = 0.7)
+
+# Splitting the Data
+set.seed(123)
+splitIndex <- createDataPartition(data$Diabetes_012, p = 0.7, list = FALSE)
+trainData <- data[splitIndex,]
+testData <- data[-splitIndex,]
+testData$Diabetes_012 <- as.factor(testData$Diabetes_012) 
+
+```
+
+### Classification Model
+
+#### Random Forest
+
+```{r}
+
+# Model Building
+set.seed(123)  # For reproducibility
+model_rf <- train(Diabetes_012 ~ ., data = trainData, method = "rf", trControl = trainControl(method = "cv", number = 10, verboseIter = TRUE))
+
+# Model Tuning (Hyperparameter Optimization)
+tuned_model <- tuneRF(trainData[,-1], trainData$Diabetes_012, stepFactor = 1.5, improve = 0.01, ntreeTry = 500, trace = TRUE)
+
+# Model Evaluation
+predictions <- predict(model_rf, testData)
+confMat <- confusionMatrix(predictions, testData$Diabetes_012)
+roc_curve <- roc(response = testData$Diabetes_012, predictor = as.numeric(predictions), levels = levels(testData$Diabetes_012))
+auc_value <- auc(roc_curve)
+print(confMat)
+print(auc_value)
+
+# Feature Importance
+importance_matrix <- importance(model_rf)
+varImpPlot(model_rf, main = "Variable Importance in Random Forest")
+```
+
+------------------------------------------------------------------------
+
 ### Conclusion
 
 In conclusion, we have predicted the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease) for our regression section. Based on our observation, the Support Vector Machine model is the best model to predict the progression rate of diabetes in individuals with the lowest MSE and RMSE value.
@@ -319,13 +403,13 @@ In conclusion, we have predicted the progression rate of diabetes in individuals
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately.
 
 To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
 
 ## Inputs and Outputs
 
-You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change. This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
 
 ```{r eruptions, echo=FALSE}
 inputPanel(
@@ -363,6 +447,3 @@ Note the use of the `height` parameter to determine how much vertical space the 
 You can also use the `shinyApp` function to define an application inline rather then in an external directory.
 
 In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
-
-
-
