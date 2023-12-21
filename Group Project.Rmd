@@ -30,7 +30,6 @@ Source: https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-da
 ***
 ### Install dependencies
 ```{r}
-install.packages("tidyverse")
 install.packages("ggplot2")
 install.packages("caret")
 install.packages("dplyr")
@@ -40,6 +39,7 @@ install.packages("rpart")
 install.packages("corrplot")
 install.packages("knitr")
 install.packages("shiny")
+install.packages("lattice")
 ```
 ***
 ### Libraries
