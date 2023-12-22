@@ -336,7 +336,7 @@ install.packages("randomForest")
 library(randomForest)
 rf_model <- randomForest(Health_Complication~., data = train_data)
 rf_x_test <- test_data[,2:22]
-rf_y_test <- test_data[,22]
+rf_y_test <- test_data[,1]
 predictions_rf <- predict(rf_model, rf_x_test)
 confusionMatrix(predictions_rf, rf_y_test)
 ```
