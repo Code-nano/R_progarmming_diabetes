@@ -339,41 +339,92 @@ print(paste("Root Mean Squared Error:", rmse))
 ###Classification method
 ###Naive Bayes Model
 ```{r}
-# Define the model formula
-classification_model <- Diabetes_012 ~ .
+diabetes <-read.csv("diabetes.csv", nrows=100)
+View(diabetes)
 
-set.seed(123)  # Set a random seed for reproducibility for Classification method
-train_index_classification <- createDataPartition(data$Diabetes_012, p = 0.6, list = FALSE)
-train_data_classification <- data[train_index_classification, ]
-temp_data_classsification <- data[-train_index_classification, ]
+diabetes$Diabetes_012 <- as.factor(diabetes$Diabetes_012)
+glimpse(diabetes)
 
-# Create validation and test sets
-validation_index_classification <- createDataPartition(temp_data_classsification$Diabetes_012, p = 0.5, list = FALSE)
-validation_data_classification <- temp_data_classsification[validation_index_classification, ]
-test_data_classification <- temp_data_classsification[-validation_index_classification, ]
+KNN_diabetes<-function(s, df, col) {
+  trainIndex<-createDataPartition(col, p=s, list=F)
+  data_train<-df[trainIndex,]
+  data_test<-df[-trainIndex,]           
+  model <- train(Diabetes_012~., data=data_train, method = "knn")
+  
+  # make predictions
+  x_test <- data_test[,2:22]
+  y_test <- data_test[,1]
+  predictions <- predict(model, x_test)
+  cm_diabetes<-confusionMatrix(predictions, y_test)
+  return(list(model,cm_diabetes))
+  
+}
+
+# 80%/20% train/test
+split<-0.80  
+result1d<-KNN_diabetes(split, diabetes, diabetes$Diabetes_012)
+result1d
+# 70%/30% train/test
+split<-0.70  
+result2d<-KNN_diabetes(split, diabetes, diabetes$Diabetes_012)
+result2d
 
 
-#naive bayes model
-nb_model <- NaiveBayes(as.factor(data$Diabetes_012),grouping=as.factor(data$Diabetes_012), data=train_data_classification, userkernel = FALSE, fL = 0,)
-plot(nb_model)
-#make predictions
-nb_x_test <- test_data_classification[,2:20]
-nb_y_test <- test_data_classification[,1]
-predictions_nb <- predict(nb_model)
-##confusionMatrix(predictions_nb, nb_y_test)
+#k-fold cross validation
+# k-fold
+diabetes <- data.frame(diabetes)
+train_control <- trainControl(method="cv", number=10)
+modelKNN1 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
+
+# repeated K Fold
+train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
+modelKNN2 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
+
+# Leave one out CV
+train_control <- trainControl(method="LOOCV")
+modelKNN3 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
+
+# bootstrap
+train_control <- trainControl(method="boot", number=100)
+modelKNN4 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
+
+
+
+## make predictions
+x_test <- diabetes[,2:22]
+y_test <- diabetes[,1]
+predictKNN1 <- predict(modelKNN1, x_test)
+cmKNN1<-confusionMatrix(predictKNN1, y_test)
+cmKNN1
+predictKNN2 <- predict(modelKNN2, x_test)
+cmKNN2<-confusionMatrix(predictKNN2, y_test)
+cmKNN2
+predictKNN3 <- predict(modelKNN3, x_test)
+cmKNN3<-confusionMatrix(predictKNN3, y_test)
+cmKNN3
+predictKNN4 <- predict(modelKNN4, x_test)
+cmKNN4<-confusionMatrix(predictKNN4, y_test)
+cmKNN4
+
+#ROC
+split<-0.80  
+glimpse(diabetes)
+trainIndex<-createDataPartition(diabetes$Diabetes_012, p=split, list=F)
+data_train<-diabetes[trainIndex,]
+data_test<-diabetes[-trainIndex,]           
+ctrl <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
+ctrl
+
 ```
 
 ```{r}
-knn_model <- sknn(as.factor(data$Diabetes_012),grouping=as.factor(data$Diabetes_012), data=train_data_classification, method="knn")
-#make predictions
-knn_x_test <- test_data_classification[,2:22]
-knn_y_test <- test_data_classification[,1]
-predictions_knn <- predict(knn_model, knn_x_test)
-confusionMatrix(predictions_knn, knn_y_test)
+
 ```
 View(data)
 ```{r}
+##CAN delete
 #Random forest model
+
 install.packages("randomForest")
 library(randomForest)
 rf_model <- randomForest(Diabetes_012 ~ ., data = train_data_classification)
