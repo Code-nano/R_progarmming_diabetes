@@ -5,30 +5,37 @@ runtime: shiny
 ---
 
 ### Group Member:
-1) Muhammad Imran Haiqal bin Azmi    (17113547)
-2) Tasslim Bin Mansoor Ali           (23056322)
-3) Muhammad Adib Bin Mohd Akbar      (17119253)
-4) Muhammad Aiman bin Zolkifli       (22080779)
-5) Nur Qistina binti Roslan          (22089573)
+
+1)  Muhammad Imran Haiqal bin Azmi (17113547)
+2)  Tasslim Bin Mansoor Ali (23056322)
+3)  Muhammad Adib Bin Mohd Akbar (17119253)
+4)  Muhammad Aiman bin Zolkifli (22080779)
+5)  Nur Qistina binti Roslan (22089573)
 
 ### Title
+
 Risk of Diabetes Prediction
 
 ### Introduction
-Diabetes is a chronic disease associated with individuals inability to effectively regulate the glucose level in the blood, leading to diminished quality of life and reduced longevity. Individuals that are diagnosed with diabetes often suffer many health complications including heart disease, chronic kidney disease, nerve damage and mental health issues. The challenge is that diabetes patients are frequently diagnosed in the later stages of the disease when significant complications have already developed. Therefore, there is a need for a highly accurate model that can establish strong relationships between individuals' background factors and risk of diabetes. 
+
+Diabetes is a chronic disease associated with individuals inability to effectively regulate the glucose level in the blood, leading to diminished quality of life and reduced longevity. Individuals that are diagnosed with diabetes often suffer many health complications including heart disease, chronic kidney disease, nerve damage and mental health issues. The challenge is that diabetes patients are frequently diagnosed in the later stages of the disease when significant complications have already developed. Therefore, there is a need for a highly accurate model that can establish strong relationships between individuals' background factors and risk of diabetes.
 
 ### Dataset
+
 **Diabetes Health Indicators Dataset**
 
-Source: https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data
+Source: <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data>
 
 ### Objective
-1) To identify and quantify how certain individuals background (smoking habit, blood pressure, cholesterol levels) contribute to the progression of diabetes.
-2) To classifies individuals based on their risk of developing diabetes, considering their background.
-3) To predict the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease)
 
-***
+1)  To identify and quantify how certain individuals background (smoking habit, blood pressure, cholesterol levels) contribute to the progression of diabetes.
+2)  To classifies individuals based on their risk of developing diabetes, considering their background.
+3)  To predict the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease)
+
+------------------------------------------------------------------------
+
 ### Libraries
+
 ```{r}
 library(tidyverse)
 library(ggplot2)
@@ -37,16 +44,25 @@ library(dplyr)
 library(Metrics)
 library(e1071)
 library(rpart)
+library(pROC)
+library(corrplot)
+library(randomForest)
+library(caret)
+library(klaR)
 ```
 
-***
+------------------------------------------------------------------------
+
 ### Load our Dataset
+
 ```{r}
 data<-read_csv("diabetes.csv")
 ```
 
-***
+------------------------------------------------------------------------
+
 ### Data Understanding
+
 ```{r}
 # Summary of dataset
 glimpse(data)
@@ -66,8 +82,10 @@ colSums(data=="")
 
 ```
 
-***
+------------------------------------------------------------------------
+
 ### Exploratory Data Analysis (EDA)
+
 ```{r}
 # Load the corrplot package
 library(corrplot)
@@ -237,11 +255,26 @@ ggplot(data, aes(x = Income, fill = diabetes_binary)) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 
 #We can say that people with higher income are more diabetic
+
 ```
 
-***
+\
+
+------------------------------------------------------------------------
+
 ### Train-test Preparation
+
 ```{r}
+# Filtering the dataset to non-diabetes and pre-diabetes patients
+data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
+
+# Mutate new column that combine all health complications
+data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack)
+
+
+# Define the model formula
+model_formula <- Health_Complication ~ .
+
 set.seed(123)  # Set a random seed for reproducibility
 train_index <- createDataPartition(data$Health_Complication, p = 0.6, list = FALSE)
 train_data <- data[train_index, ]
@@ -254,19 +287,13 @@ test_data <- temp_data[-validation_index, ]
 
 ```
 
-***
-### Regression Model
-```{r}
-# Filtering the dataset to non-diabetes and pre-diabetes patients
-data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
+------------------------------------------------------------------------
 
-# Mutate new column that combine all health complications
-data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack)
+### Regression Model
+
+```{r}
 
 #Linear Regression of Health Complication with Diabetes
-
-# Define the model formula
-model_formula <- Health_Complication ~ .
 
 # Train the linear regression model
 linear_model <- lm(model_formula, data = train_data)
@@ -286,6 +313,7 @@ print(paste("Root Mean Squared Error:", rmse))
 ```
 
 ### Support Vector Machine Regression
+
 ```{r}
 #Decision Tree Regression
 tree_model <- rpart(Health_Complication ~ . , data = train_data, method = "anova")
@@ -297,6 +325,7 @@ print(paste("Root Mean Squared Error:", rmse))
 ```
 
 ### Decision Tree Regression
+
 ```{r}
 # SVM Model
 svm_model <- svm(Health_Complication~., data = train_data)
@@ -310,33 +339,46 @@ print(paste("Root Mean Squared Error:", rmse))
 ###Classification method
 ###Naive Bayes Model
 ```{r}
+# Define the model formula
+classification_model <- Diabetes_012 ~ .
+
+set.seed(123)  # Set a random seed for reproducibility for Classification method
+train_index_classification <- createDataPartition(data$Diabetes_012, p = 0.6, list = FALSE)
+train_data_classification <- data[train_index_classification, ]
+temp_data_classsification <- data[-train_index_classification, ]
+
+# Create validation and test sets
+validation_index_classification <- createDataPartition(temp_data_classsification$Diabetes_012, p = 0.5, list = FALSE)
+validation_data_classification <- temp_data_classsification[validation_index_classification, ]
+test_data_classification <- temp_data_classsification[-validation_index_classification, ]
+
+
 #naive bayes model
-install.packages("klaR")
-library(klaR)
-nb_model <- NaiveBayes(Health_Complication~., data=train_data)
+nb_model <- NaiveBayes(as.factor(data$Diabetes_012),grouping=as.factor(data$Diabetes_012), data=train_data_classification, userkernel = FALSE, fL = 0,)
+plot(nb_model)
 #make predictions
-nb_x_test <- test_data[,2:20]
-nb_y_test <- test_data[,1]
-predictions_nb <- predict(nb_model, nb_x_test)
-confusionMatrix(predictions_nb$class_nb, nb_y_test)
+nb_x_test <- test_data_classification[,2:20]
+nb_y_test <- test_data_classification[,1]
+predictions_nb <- predict(nb_model)
+##confusionMatrix(predictions_nb, nb_y_test)
 ```
 
 ```{r}
-knn_model <- train(Health_Complication~., data = train_data, method = "knn")
+knn_model <- sknn(as.factor(data$Diabetes_012),grouping=as.factor(data$Diabetes_012), data=train_data_classification, method="knn")
 #make predictions
-knn_x_test <- test_data[,2:22]
-knn_y_test <- test_data[,1]
+knn_x_test <- test_data_classification[,2:22]
+knn_y_test <- test_data_classification[,1]
 predictions_knn <- predict(knn_model, knn_x_test)
 confusionMatrix(predictions_knn, knn_y_test)
 ```
-
+View(data)
 ```{r}
 #Random forest model
 install.packages("randomForest")
 library(randomForest)
-rf_model <- randomForest(Health_Complication~., data = train_data)
-rf_x_test <- test_data[,2:22]
-rf_y_test <- test_data[,1]
+rf_model <- randomForest(Diabetes_012 ~ ., data = train_data_classification)
+rf_x_test <- test_data_classification[,2:22]
+rf_y_test <- test_data_classification[,1]
 predictions_rf <- predict(rf_model, rf_x_test)
 confusionMatrix(predictions_rf, rf_y_test)
 ```
@@ -344,7 +386,90 @@ confusionMatrix(predictions_rf, rf_y_test)
 ***
 
 
-***
+```
+
+```{r}
+# Model Evaluation
+
+# Generate class predictions
+predictions <- predict(model_rf, testData)
+# Generate predicted probabilities
+prob_predictions <- predict(model_rf, testData, type = "prob")
+
+# Ensure predictions are factors with the same levels as the actual data
+predictions <- factor(predictions, levels = levels(testData$Diabetes_012))
+
+# Confusion Matrix
+confMat <- confusionMatrix(predictions, testData$Diabetes_012)
+print(confMat)
+
+# Overall Accuracy
+accuracy <- sum(predictions == testData$Diabetes_012) / length(predictions)
+print(paste("Accuracy:", accuracy))
+
+# Function to calculate ROC and AUC for each class
+calculate_roc_auc <- function(class, predictions, actual_labels) {
+  binary_response <- as.numeric(actual_labels == class)
+  roc_curve <- roc(binary_response, predictions[, as.character(class)])
+  auc_value <- auc(roc_curve)
+  list("roc_curve" = roc_curve, "auc" = auc_value)
+}
+
+# Calculating ROC and AUC for each class
+roc_results <- lapply(levels(testData$Diabetes_012), calculate_roc_auc, prob_predictions, testData$Diabetes_012)
+
+# Printing AUC values for each class
+sapply(roc_results, function(x) x$auc)
+
+# Precision, Recall, and F1-Score
+# Function to calculate precision, recall, and F1-score for a given class
+calculate_metrics <- function(class, predictions, actual_labels) {
+  # Convert to binary format (one-vs-rest approach) and then to factors
+  binary_predictions <- factor(as.numeric(predictions == class), levels = c(0, 1))
+  binary_actual_labels <- factor(as.numeric(actual_labels == class), levels = c(0, 1))
+
+  # Calculate precision, recall, and F1-score
+  precision <- posPredValue(binary_predictions, binary_actual_labels, positive = "1")
+  recall <- sensitivity(binary_predictions, binary_actual_labels, positive = "1")
+  f1_score <- ifelse((precision + recall) > 0, (2 * precision * recall) / (precision + recall), 0)
+
+  return(c(Precision = precision, Recall = recall, F1_Score = f1_score))
+}
+
+# Calculating metrics for each class
+class_metrics <- sapply(levels(predictions), function(class) calculate_metrics(class, predictions, testData$Diabetes_012))
+
+# Print the metrics for each class
+print(class_metrics)
+calculate_metrics <- function(class, predictions, actual_labels) {
+  # Convert to binary format (one-vs-rest approach) and then to factors
+  binary_predictions <- factor(as.numeric(predictions == class), levels = c(0, 1))
+  binary_actual_labels <- factor(as.numeric(actual_labels == class), levels = c(0, 1))
+
+  # Calculate precision, recall, and F1-score
+  precision <- posPredValue(binary_predictions, binary_actual_labels, positive = "1")
+  recall <- sensitivity(binary_predictions, binary_actual_labels, positive = "1")
+  f1_score <- ifelse((precision + recall) > 0, (2 * precision * recall) / (precision + recall), 0)
+
+  return(c(Precision = precision, Recall = recall, F1_Score = f1_score))
+}
+
+# Calculating metrics for each class
+class_metrics <- sapply(levels(predictions), function(class) calculate_metrics(class, predictions, testData$Diabetes_012))
+
+# Print the metrics for each class
+print(class_metrics)
+
+```
+
+```{r}
+length(predictions)
+length(testData$Diabetes_012)
+
+```
+
+------------------------------------------------------------------------
+
 ### Conclusion
 
 In conclusion, we have predicted the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease) for our regression section. Based on our observation, the Support Vector Machine model is the best model to predict the progression rate of diabetes in individuals with the lowest MSE and RMSE value.
@@ -353,13 +478,13 @@ In conclusion, we have predicted the progression rate of diabetes in individuals
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately.
 
 To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
 
 ## Inputs and Outputs
 
-You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change. This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
 
 ```{r eruptions, echo=FALSE}
 inputPanel(
@@ -399,6 +524,3 @@ Note the use of the `height` parameter to determine how much vertical space the 
 You can also use the `shinyApp` function to define an application inline rather then in an external directory.
 
 In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
-
-
-
