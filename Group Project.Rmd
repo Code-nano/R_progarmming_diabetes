@@ -339,7 +339,7 @@ print(paste("Root Mean Squared Error:", rmse))
 ###Classification method
 ###Naive Bayes Model
 ```{r}
-diabetes <-read.csv("diabetes.csv", nrows=100)
+diabetes <-read.csv("diabetes.csv", nrows=100)  #change this later
 View(diabetes)
 
 diabetes$Diabetes_012 <- as.factor(diabetes$Diabetes_012)
@@ -420,18 +420,78 @@ ctrl
 ```{r}
 
 ```
-View(data)
-```{r}
-##CAN delete
-#Random forest model
 
-install.packages("randomForest")
-library(randomForest)
-rf_model <- randomForest(Diabetes_012 ~ ., data = train_data_classification)
-rf_x_test <- test_data_classification[,2:22]
-rf_y_test <- test_data_classification[,1]
-predictions_rf <- predict(rf_model, rf_x_test)
-confusionMatrix(predictions_rf, rf_y_test)
+```{r}
+#RANDOM FOREST
+RF<-function(s, df, col) {
+  trainIndex<-createDataPartition(col, p=s, list=F)
+  data_train<-diabetes[trainIndex,]
+  data_test<-diabetes[-trainIndex,]           
+  model <- randomForest(Diabetes_012~., data=data_train)
+  
+  # make predictions
+  x_test <- data_test[,2:22]
+  y_test <- data_test[,1]
+  predictions <- predict(model, x_test)
+  cm<-confusionMatrix(predictions, y_test)
+  return(cm)
+  
+}
+
+# 80%/20% train/test
+split<-0.80  
+result3d<-RF(split, diabetes, diabetes$Diabetes_012)
+result3d
+# 70%/30% train/test
+split<-0.70 
+result4d<-RF(split, diabetes, diabetes$Diabetes_012)
+result4d
+
+
+#k-fold cross validation
+# k-fold
+diabetes <- data.frame(diabetes)
+train_control <- trainControl(method="cv", number=10)
+modelRF1 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
+
+# repeated K Fold
+train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
+modelRF2 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
+
+# Leave one out CV
+train_control <- trainControl(method="LOOCV")
+modelRF3 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
+
+# bootstrap
+train_control <- trainControl(method="boot", number=100)
+modelRF4 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
+
+
+
+## make predictions
+x_test <- diabetes[,2:22]
+y_test <- diabetes[,1]
+predictRF1 <- predict(modelRF1, x_test)
+cmRF1<-confusionMatrix(predictRF1, y_test)
+cmRF1
+predictRF2 <- predict(modelRF2, x_test)
+cmRF2<-confusionMatrix(predictRF2, y_test)
+cmRF2
+predictRF3 <- predict(modelRF3, x_test)
+cmRF3<-confusionMatrix(predictRF3, y_test)
+cmRF3
+predictRF4 <- predict(modelRF4, x_test)
+cmRF4<-confusionMatrix(predictRF4, y_test)
+cmRF4
+
+#ROC
+split<-0.80  
+glimpse(diabetes)
+trainIndex<-createDataPartition(diabetes$Diabetes_012, p=split, list=F)
+data_train<-diabetes[trainIndex,]
+data_test<-diabetes[-trainIndex,]           
+ctrl <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
+ctrl
 ```
 
 ***
