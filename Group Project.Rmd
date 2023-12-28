@@ -584,7 +584,7 @@ length(testData$Diabetes_012)
 ### Conclusion
 
 In conclusion, we have predicted the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease) for our regression section. Based on our observation, the Support Vector Machine model is the best model to predict the progression rate of diabetes in individuals with the lowest MSE and RMSE value.
-
+We have performed two classification method which is KNN and Random Forest to classify diabetes given the independent variables. Also, we have conducted cross validation method and ROC to measure the performance of the classification model. 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
