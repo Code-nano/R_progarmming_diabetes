@@ -4,7 +4,7 @@ output: html_document
 runtime: shiny
 ---
 
-# Group Member:
+## Group Member:
 
 1)  Muhammad Imran Haiqal bin Azmi (17113547)
 2)  Tasslim Bin Mansoor Ali (23056322)
@@ -34,7 +34,7 @@ Source: <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-d
 
 ------------------------------------------------------------------------
 
-### Libraries
+## Libraries
 
 ```{r}
 library(tidyverse)
@@ -52,7 +52,7 @@ library(klaR)
 
 ------------------------------------------------------------------------
 
-### Load our Dataset
+## Load our Dataset
 
 ```{r}
 data<-read_csv("diabetes.csv")
@@ -60,7 +60,7 @@ data<-read_csv("diabetes.csv")
 
 ------------------------------------------------------------------------
 
-### Data Understanding
+## Data Understanding
 
 ```{r}
 # Summary of dataset
@@ -74,16 +74,21 @@ colSums(is.na(data))
 
 # Check if there is any empty string value
 colSums(data=="")
+```
 
-# Check if there is any zero value
-#colSums(data==0)
-
-
+```{r}
+# Checking duplicated values 
+anyDuplicated(data)
+# Remove the duplicated row 
+duplicate_rows <- duplicated(data) 
+data <- data[!duplicate_rows, ]
+# Checking duplicated values 
+anyDuplicated(data)
 ```
 
 ------------------------------------------------------------------------
 
-### Exploratory Data Analysis (EDA)
+## Exploratory Data Analysis (EDA)
 
 ```{r}
 # Load the corrplot package
@@ -257,13 +262,23 @@ ggplot(data, aes(x = Income, fill = diabetes_binary)) +
 
 ```
 
-\
-
 ------------------------------------------------------------------------
 
-### Train-test Preparation
+## Modelling and evaluation
+
+### Regression Methods
+
+#### Train-test Preparation
 
 ```{r}
+# possible number of health complication (0-4)
+#Linear Regression of Health Complication with Diabetes
+# Filtering the dataset to non-diabetes and pre-diabetes patients
+data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
+
+# Mutate new column that combine all health complications
+data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack)
+
 set.seed(123)  # Set a random seed for reproducibility
 train_index <- createDataPartition(data$Health_Complication, p = 0.6, list = FALSE)
 train_data <- data[train_index, ]
@@ -274,24 +289,18 @@ validation_index <- createDataPartition(temp_data$Health_Complication, p = 0.5, 
 validation_data <- temp_data[validation_index, ]
 test_data <- temp_data[-validation_index, ]
 
+
+
 ```
 
 ------------------------------------------------------------------------
 
-### Regression Model
+#### Linear Regression Modelling
 
 ```{r}
-# Filtering the dataset to non-diabetes and pre-diabetes patients
-data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
-
-# Mutate new column that combine all health complications
-data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack)
-
-#Linear Regression of Health Complication with Diabetes
-
-
 # Define the model formula
-model_formula <- Health_Complication ~ .
+model_comp <- Health_Complication ~ BMI + Smoker + PhysActivity + Fruits + Veggies + HvyAlcoholConsump + AnyHealthcare + GenHlth + NoDocbcCost + MentHlth + PhysHlth + DiffWalk + Sex + Age
+model_formula <- model_comp
 
 # Train the linear regression model
 linear_model <- lm(model_formula, data = train_data)
@@ -314,7 +323,7 @@ print(paste("Root Mean Squared Error:", rmse))
 
 ```{r}
 #Decision Tree Regression
-tree_model <- rpart(Health_Complication ~ . , data = train_data, method = "anova")
+tree_model <- rpart(model_comp , data = train_data, method = "anova")
 tree_prediction <- predict(tree_model, newdata = test_data)
 mse <- mean((tree_prediction - test_data$Health_Complication)^2)
 rmse <- sqrt(mse)
@@ -322,50 +331,51 @@ print(paste("Mean Squared Error:", mse))
 print(paste("Root Mean Squared Error:", rmse))
 ```
 
-### SVM Model
+### Classification method
+
+#### Kth Near Neighbor Modelling and Evaluation
 
 ```{r}
-# SVM Model
-svm_model <- svm(Health_Complication~., data = train_data)
-svm_prediction <- predict(svm_model, newdata = test_data)
-mse <- mean((predictions - test_data$Health_Complication)^2)
-rmse <- sqrt(mse)
-print(paste("Mean Squared Error:", mse))
-print(paste("Root Mean Squared Error:", rmse))
-```
-
-## Classification method
-
-### Kth Near Neighbor Model
-
-```{r}
+# Split the data for modelling
 diabetes <-read.csv("diabetes.csv")  
-
+#check for duplicated rows
+anyDuplicated(diabetes)
+#collect duplicated rows
+duplicate_rows <- duplicated(diabetes)
+duplicate_rows
+#drop duplicated rows
+diabetes <- diabetes[!duplicate_rows,]
+glimpse(diabetes)
+#re check the duplicated rows
+anyDuplicated(diabetes)
+ 
+#convert data to factor
 diabetes$Diabetes_012 <- as.factor(diabetes$Diabetes_012)
 glimpse(diabetes)
-
-KNN_diabetes<-function(s, df, col) {
-  trainIndex<-createDataPartition(col, p=s, list=F)
-  data_train<-df[trainIndex,]
-  data_test<-df[-trainIndex,]           
-  model <- train(Diabetes_012~., data=data_train, method = "knn")
-  
-  # make predictions
-  x_test <- data_test[,2:22]
-  y_test <- data_test[,1]
-  predictions <- predict(model, x_test)
-  cm_diabetes<-confusionMatrix(predictions, y_test)
-  return(list(model,cm_diabetes))
-  
-}
-
-# 80%/20% train/test
-split<-0.80  
-result1d<-KNN_diabetes(split, diabetes, diabetes$Diabetes_012)
-result1d
+ 
+#split data 80% train, 20% test
+trainIndex<-createDataPartition(diabetes$Diabetes_012, p=0.8, list=F)
+data_train<-diabetes[trainIndex,]
+data_test<-diabetes[-trainIndex,]  
+x_test <- data_test[,2:22]
+y_test <- data_test[,1]
 ```
 
-### KNN Cross validation
+##### KNN Modelling
+
+```{r}
+#Modelling KNN
+model <- train(Diabetes_012~., data=data_train, method = "knn")
+# make predictions using KNN
+predictionsKNN <- predict(model, x_test)
+#Confusion matrix using KNN
+cmKNN<-confusionMatrix(predictionsKNN, y_test)
+#KNN ROC 
+ctrlKNN <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
+ctrlKNN
+```
+
+##### KNN Evaluation
 
 ```{r}
 #k-fold cross validation
@@ -373,81 +383,29 @@ result1d
 diabetes <- data.frame(diabetes)
 train_control <- trainControl(method="cv", number=10)
 modelKNN1 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
-
-# repeated K Fold
-train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
-modelKNN2 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
-
-# Leave one out CV
-train_control <- trainControl(method="LOOCV")
-modelKNN3 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
-
-# bootstrap
-train_control <- trainControl(method="boot", number=100)
-modelKNN4 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
-```
-
-### KNN Confusion Matrix
-
-```{r}
-## make predictions
-x_test <- diabetes[,2:22]
-y_test <- diabetes[,1]
 predictKNN1 <- predict(modelKNN1, x_test)
 cmKNN1<-confusionMatrix(predictKNN1, y_test)
 cmKNN1
-predictKNN2 <- predict(modelKNN2, x_test)
-cmKNN2<-confusionMatrix(predictKNN2, y_test)
-cmKNN2
-predictKNN3 <- predict(modelKNN3, x_test)
-cmKNN3<-confusionMatrix(predictKNN3, y_test)
-cmKNN3
-predictKNN4 <- predict(modelKNN4, x_test)
-cmKNN4<-confusionMatrix(predictKNN4, y_test)
-cmKNN4
-```
-
-### KNN ROC
-
-```{r}
-
-#ROC
-split<-0.80  
-glimpse(diabetes)
-trainIndex<-createDataPartition(diabetes$Diabetes_012, p=split, list=F)
-data_train<-diabetes[trainIndex,]
-data_test<-diabetes[-trainIndex,]           
-ctrl <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
-ctrl
-
 ```
 
 ### Random Forest
 
 ```{r}
 #RANDOM FOREST
-RF<-function(s, df, col) {
-  trainIndex<-createDataPartition(col, p=s, list=F)
-  data_train<-diabetes[trainIndex,]
-  data_test<-diabetes[-trainIndex,]           
-  model <- randomForest(Diabetes_012~., data=data_train)
-  
-  # make predictions
-  x_test <- data_test[,2:22]
-  y_test <- data_test[,1]
-  predictions <- predict(model, x_test)
-  cm<-confusionMatrix(predictions, y_test)
-  return(cm)
-  
-}
-
-# 80%/20% train/test
-split<-0.80  
-result3d<-RF(split, diabetes, diabetes$Diabetes_012)
+# modelling random forest 
+modelRF <- randomForest(Diabetes_012~., data=data_train)
+#make predictions using random forest
+predictionsRF <- predict(modelRF, x_test)
+#Confusion matrix using random forest
+cmRF<-confusionMatrix(predictionsRF, y_test)
+cmRF
+ 
+ctrlRF <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
+ctrlRF
 result3d
 ```
 
-### RF Cross Validation
+##### Random Forest Evaluation
 
 ```{r}
 #k-fold cross validation
@@ -455,131 +413,9 @@ result3d
 diabetes <- data.frame(diabetes)
 train_control <- trainControl(method="cv", number=10)
 modelRF1 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
-
-# repeated K Fold
-train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
-modelRF2 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
-
-# Leave one out CV
-train_control <- trainControl(method="LOOCV")
-modelRF3 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
-
-# bootstrap
-train_control <- trainControl(method="boot", number=100)
-modelRF4 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
-
-
-```
-
-### RF Confusion Matrix
-
-```{r}
-## make predictions
-x_test <- diabetes[,2:22]
-y_test <- diabetes[,1]
 predictRF1 <- predict(modelRF1, x_test)
 cmRF1<-confusionMatrix(predictRF1, y_test)
 cmRF1
-predictRF2 <- predict(modelRF2, x_test)
-cmRF2<-confusionMatrix(predictRF2, y_test)
-cmRF2
-predictRF3 <- predict(modelRF3, x_test)
-cmRF3<-confusionMatrix(predictRF3, y_test)
-cmRF3
-predictRF4 <- predict(modelRF4, x_test)
-cmRF4<-confusionMatrix(predictRF4, y_test)
-cmRF4
-
-
-```
-
-### RF ROC
-
-```{r}
-#ROC
-split<-0.80  
-glimpse(diabetes)
-trainIndex<-createDataPartition(diabetes$Diabetes_012, p=split, list=F)
-data_train<-diabetes[trainIndex,]
-data_test<-diabetes[-trainIndex,]           
-ctrl <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
-ctrl
-```
-
-### Model Evaluation
-
-```{r}
-# Model Evaluation
-
-# Generate class predictions
-predictions <- predict(model_rf, testData)
-# Generate predicted probabilities
-prob_predictions <- predict(model_rf, testData, type = "prob")
-
-# Ensure predictions are factors with the same levels as the actual data
-predictions <- factor(predictions, levels = levels(testData$Diabetes_012))
-
-# Confusion Matrix
-confMat <- confusionMatrix(predictions, testData$Diabetes_012)
-print(confMat)
-
-# Overall Accuracy
-accuracy <- sum(predictions == testData$Diabetes_012) / length(predictions)
-print(paste("Accuracy:", accuracy))
-
-# Function to calculate ROC and AUC for each class
-calculate_roc_auc <- function(class, predictions, actual_labels) {
-  binary_response <- as.numeric(actual_labels == class)
-  roc_curve <- roc(binary_response, predictions[, as.character(class)])
-  auc_value <- auc(roc_curve)
-  list("roc_curve" = roc_curve, "auc" = auc_value)
-}
-
-# Calculating ROC and AUC for each class
-roc_results <- lapply(levels(testData$Diabetes_012), calculate_roc_auc, prob_predictions, testData$Diabetes_012)
-
-# Printing AUC values for each class
-sapply(roc_results, function(x) x$auc)
-
-# Precision, Recall, and F1-Score
-# Function to calculate precision, recall, and F1-score for a given class
-calculate_metrics <- function(class, predictions, actual_labels) {
-  # Convert to binary format (one-vs-rest approach) and then to factors
-  binary_predictions <- factor(as.numeric(predictions == class), levels = c(0, 1))
-  binary_actual_labels <- factor(as.numeric(actual_labels == class), levels = c(0, 1))
-
-  # Calculate precision, recall, and F1-score
-  precision <- posPredValue(binary_predictions, binary_actual_labels, positive = "1")
-  recall <- sensitivity(binary_predictions, binary_actual_labels, positive = "1")
-  f1_score <- ifelse((precision + recall) > 0, (2 * precision * recall) / (precision + recall), 0)
-
-  return(c(Precision = precision, Recall = recall, F1_Score = f1_score))
-}
-
-# Calculating metrics for each class
-class_metrics <- sapply(levels(predictions), function(class) calculate_metrics(class, predictions, testData$Diabetes_012))
-
-# Print the metrics for each class
-print(class_metrics)
-calculate_metrics <- function(class, predictions, actual_labels) {
-  # Convert to binary format (one-vs-rest approach) and then to factors
-  binary_predictions <- factor(as.numeric(predictions == class), levels = c(0, 1))
-  binary_actual_labels <- factor(as.numeric(actual_labels == class), levels = c(0, 1))
-
-  # Calculate precision, recall, and F1-score
-  precision <- posPredValue(binary_predictions, binary_actual_labels, positive = "1")
-  recall <- sensitivity(binary_predictions, binary_actual_labels, positive = "1")
-  f1_score <- ifelse((precision + recall) > 0, (2 * precision * recall) / (precision + recall), 0)
-
-  return(c(Precision = precision, Recall = recall, F1_Score = f1_score))
-}
-
-# Calculating metrics for each class
-class_metrics <- sapply(levels(predictions), function(class) calculate_metrics(class, predictions, testData$Diabetes_012))
-
-# Print the metrics for each class
-print(class_metrics)
-
 ```
 
 ```{r}
@@ -601,44 +437,3 @@ knitr::opts_chunk$set(echo = TRUE)
 This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately.
 
 To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
-
-## Inputs and Outputs
-
-You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change. This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
-
-```{r eruptions, echo=FALSE}
-inputPanel(
-  selectInput("n_breaks", label = "Number of bins:",
-              choices = c(10, 20, 35, 50), selected = 20),
-  
-  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
-              min = 0.2, max = 2, value = 1, step = 0.2)
-)
-
-renderPlot({
-  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
-       xlab = "Duration (minutes)", main = "Geyser eruption duration")
-  
-  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
-  lines(dens, col = "blue")
-})
-```
-
-## Embedded Application
-
-It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
-
-```{r tabsets, echo=FALSE}
-shinyAppDir(
-  system.file("examples/06_tabsets", package = "shiny"),
-  options = list(
-    width = "100%", height = 550
-  )
-)
-```
-
-Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
-
-You can also use the `shinyApp` function to define an application inline rather then in an external directory.
-
-In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
