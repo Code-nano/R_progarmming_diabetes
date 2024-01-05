@@ -268,7 +268,7 @@ ggplot(data, aes(x = Income, fill = diabetes_binary)) +
 data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
 
 # Mutate new column that combine all health complications
-data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack + Smoker)
+data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack)
 
 
 # Define the model formula
