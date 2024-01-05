@@ -288,14 +288,11 @@ temp_data <- data[-train_index, ]
 validation_index <- createDataPartition(temp_data$Health_Complication, p = 0.5, list = FALSE)
 validation_data <- temp_data[validation_index, ]
 test_data <- temp_data[-validation_index, ]
-
-
-
 ```
 
 ------------------------------------------------------------------------
 
-#### Linear Regression Modelling
+#### Multiple Linear Regression Modelling (RMSE = 0.8055)
 
 ```{r}
 # Define the model formula
@@ -308,6 +305,9 @@ linear_model <- lm(model_formula, data = train_data)
 # Summarize the model 
 summary(linear_model)
 
+#analysis of variance
+anova(linear_model)
+
 # Make predictions on the test set
 predictions <- predict(linear_model, newdata = test_data)
 
@@ -319,7 +319,7 @@ print(paste("Root Mean Squared Error:", rmse))
 
 ```
 
-### Decision Tree Regression
+### Decision Tree Regression (RMSE = 0.8362)
 
 ```{r}
 #Decision Tree Regression
@@ -342,7 +342,6 @@ diabetes <-read.csv("diabetes.csv")
 anyDuplicated(diabetes)
 #collect duplicated rows
 duplicate_rows <- duplicated(diabetes)
-duplicate_rows
 #drop duplicated rows
 diabetes <- diabetes[!duplicate_rows,]
 glimpse(diabetes)
@@ -353,8 +352,8 @@ anyDuplicated(diabetes)
 diabetes$Diabetes_012 <- as.factor(diabetes$Diabetes_012)
 glimpse(diabetes)
  
-#split data 80% train, 20% test
-trainIndex<-createDataPartition(diabetes$Diabetes_012, p=0.8, list=F)
+#split data 60% train, 40% test
+trainIndex<-createDataPartition(diabetes$Diabetes_012, p=0.6, list=F)
 data_train<-diabetes[trainIndex,]
 data_test<-diabetes[-trainIndex,]  
 x_test <- data_test[,2:22]
@@ -370,9 +369,7 @@ model <- train(Diabetes_012~., data=data_train, method = "knn")
 predictionsKNN <- predict(model, x_test)
 #Confusion matrix using KNN
 cmKNN<-confusionMatrix(predictionsKNN, y_test)
-#KNN ROC 
-ctrlKNN <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
-ctrlKNN
+cmKNN
 ```
 
 ##### KNN Evaluation
@@ -381,7 +378,7 @@ ctrlKNN
 #k-fold cross validation
 # k-fold
 diabetes <- data.frame(diabetes)
-train_control <- trainControl(method="cv", number=10)
+train_control <- trainControl(method="cv", number=5)
 modelKNN1 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
 predictKNN1 <- predict(modelKNN1, x_test)
 cmKNN1<-confusionMatrix(predictKNN1, y_test)
@@ -399,10 +396,6 @@ predictionsRF <- predict(modelRF, x_test)
 #Confusion matrix using random forest
 cmRF<-confusionMatrix(predictionsRF, y_test)
 cmRF
- 
-ctrlRF <- trainControl(method = "repeatedcv", repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
-ctrlRF
-result3d
 ```
 
 ##### Random Forest Evaluation
@@ -411,7 +404,7 @@ result3d
 #k-fold cross validation
 # k-fold
 diabetes <- data.frame(diabetes)
-train_control <- trainControl(method="cv", number=10)
+train_control <- trainControl(method="cv", number=5)
 modelRF1 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
 predictRF1 <- predict(modelRF1, x_test)
 cmRF1<-confusionMatrix(predictRF1, y_test)
