@@ -4,7 +4,7 @@ output: html_document
 runtime: shiny
 ---
 
-### Group Member:
+# Group Member:
 
 1)  Muhammad Imran Haiqal bin Azmi (17113547)
 2)  Tasslim Bin Mansoor Ali (23056322)
@@ -12,21 +12,21 @@ runtime: shiny
 4)  Muhammad Aiman bin Zolkifli (22080779)
 5)  Nur Qistina binti Roslan (22089573)
 
-### Title
+## Title
 
 Risk of Diabetes Prediction
 
-### Introduction
+## Introduction
 
 Diabetes is a chronic disease associated with individuals inability to effectively regulate the glucose level in the blood, leading to diminished quality of life and reduced longevity. Individuals that are diagnosed with diabetes often suffer many health complications including heart disease, chronic kidney disease, nerve damage and mental health issues. The challenge is that diabetes patients are frequently diagnosed in the later stages of the disease when significant complications have already developed. Therefore, there is a need for a highly accurate model that can establish strong relationships between individuals' background factors and risk of diabetes.
 
-### Dataset
+## Dataset
 
 **Diabetes Health Indicators Dataset**
 
 Source: <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data>
 
-### Objective
+## Objective
 
 1)  To identify and quantify how certain individuals background (smoking habit, blood pressure, cholesterol levels) contribute to the progression of diabetes.
 2)  To classifies individuals based on their risk of developing diabetes, considering their background.
@@ -264,16 +264,6 @@ ggplot(data, aes(x = Income, fill = diabetes_binary)) +
 ### Train-test Preparation
 
 ```{r}
-# Filtering the dataset to non-diabetes and pre-diabetes patients
-data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
-
-# Mutate new column that combine all health complications
-data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack)
-
-
-# Define the model formula
-model_formula <- Health_Complication ~ .
-
 set.seed(123)  # Set a random seed for reproducibility
 train_index <- createDataPartition(data$Health_Complication, p = 0.6, list = FALSE)
 train_data <- data[train_index, ]
@@ -291,8 +281,17 @@ test_data <- temp_data[-validation_index, ]
 ### Regression Model
 
 ```{r}
+# Filtering the dataset to non-diabetes and pre-diabetes patients
+data <- data %>% filter(data$Diabetes_012==0 | data$Diabetes_012==1 )
+
+# Mutate new column that combine all health complications
+data <- mutate(data, "Health_Complication" = HighChol + HighBP + Stroke + HeartDiseaseorAttack)
 
 #Linear Regression of Health Complication with Diabetes
+
+
+# Define the model formula
+model_formula <- Health_Complication ~ .
 
 # Train the linear regression model
 linear_model <- lm(model_formula, data = train_data)
@@ -335,13 +334,12 @@ print(paste("Mean Squared Error:", mse))
 print(paste("Root Mean Squared Error:", rmse))
 ```
 
-## Classification method 
+## Classification method
 
 ### Kth Near Neighbor Model
 
 ```{r}
 diabetes <-read.csv("diabetes.csv")  
-View(diabetes)
 
 diabetes$Diabetes_012 <- as.factor(diabetes$Diabetes_012)
 glimpse(diabetes)
@@ -365,12 +363,6 @@ KNN_diabetes<-function(s, df, col) {
 split<-0.80  
 result1d<-KNN_diabetes(split, diabetes, diabetes$Diabetes_012)
 result1d
-# 70%/30% train/test
-split<-0.70  
-result2d<-KNN_diabetes(split, diabetes, diabetes$Diabetes_012)
-result2d
-
-
 ```
 
 ### KNN Cross validation
@@ -393,8 +385,6 @@ modelKNN3 <- train(Diabetes_012~., data=diabetes, trControl=train_control, metho
 # bootstrap
 train_control <- trainControl(method="boot", number=100)
 modelKNN4 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
-
-
 ```
 
 ### KNN Confusion Matrix
@@ -432,8 +422,7 @@ ctrl
 
 ```
 
-### 
-Random Forest
+### Random Forest
 
 ```{r}
 #RANDOM FOREST
@@ -456,12 +445,6 @@ RF<-function(s, df, col) {
 split<-0.80  
 result3d<-RF(split, diabetes, diabetes$Diabetes_012)
 result3d
-# 70%/30% train/test
-split<-0.70 
-result4d<-RF(split, diabetes, diabetes$Diabetes_012)
-result4d
-
-
 ```
 
 ### RF Cross Validation
