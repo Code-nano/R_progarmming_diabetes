@@ -333,7 +333,7 @@ print(paste("Root Mean Squared Error:", rmse))
 
 ### Classification method
 
-#### Kth Near Neighbor Modelling and Evaluation
+#### Train/test split data, Modelling, Predictions, Confusion Matrix
 
 ```{r}
 # Split the data for modelling
@@ -352,6 +352,7 @@ anyDuplicated(diabetes)
 diabetes$Diabetes_012 <- as.factor(diabetes$Diabetes_012)
 glimpse(diabetes)
  
+set.seed(123)
 #split data 60% train, 40% test
 trainIndex<-createDataPartition(diabetes$Diabetes_012, p=0.6, list=F)
 data_train<-diabetes[trainIndex,]
@@ -360,32 +361,7 @@ x_test <- data_test[,2:22]
 y_test <- data_test[,1]
 ```
 
-##### KNN Modelling
-
-```{r}
-#Modelling KNN
-model <- train(Diabetes_012~., data=data_train, method = "knn")
-# make predictions using KNN
-predictionsKNN <- predict(model, x_test)
-#Confusion matrix using KNN
-cmKNN<-confusionMatrix(predictionsKNN, y_test)
-cmKNN
-```
-
-##### KNN Evaluation
-
-```{r}
-#k-fold cross validation
-# k-fold
-diabetes <- data.frame(diabetes)
-train_control <- trainControl(method="cv", number=5)
-modelKNN1 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="knn")
-predictKNN1 <- predict(modelKNN1, x_test)
-cmKNN1<-confusionMatrix(predictKNN1, y_test)
-cmKNN1
-```
-
-### Random Forest
+### Random Forest (Accuracy = 0.8334)
 
 ```{r}
 #RANDOM FOREST
@@ -398,19 +374,6 @@ cmRF<-confusionMatrix(predictionsRF, y_test)
 cmRF
 ```
 
-##### Random Forest Evaluation
-
-```{r}
-#k-fold cross validation
-# k-fold
-diabetes <- data.frame(diabetes)
-train_control <- trainControl(method="cv", number=5)
-modelRF1 <- train(Diabetes_012~., data=diabetes, trControl=train_control, method="rf")
-predictRF1 <- predict(modelRF1, x_test)
-cmRF1<-confusionMatrix(predictRF1, y_test)
-cmRF1
-```
-
 ```{r}
 length(predictions)
 length(testData$Diabetes_012)
@@ -421,7 +384,7 @@ length(testData$Diabetes_012)
 
 ### Conclusion
 
-In conclusion, we have predicted the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease) for our regression section. Based on our observation, the Support Vector Machine model is the best model to predict the progression rate of diabetes in individuals with the lowest MSE and RMSE value. We have performed two classification method which is KNN and Random Forest to classify diabetes given the independent variables. Also, we have conducted cross validation method and ROC to measure the performance of the classification model.
+In conclusion, we have predicted the progression rate of diabetes in individuals using key health indicators (Cholesterol, BP, Stroke and Heart Disease) for our regression section. Based on our observation, the Support Vector Machine model is the best model to predict the progression rate of diabetes in individuals with the lowest MSE and RMSE value. We have performed classification method which is Random Forest to classify diabetes given the independent variables and it shows significant accuracy prediction. Future enhancement may consider other classification model that suitable for large dataset approach and perform model evaluation for selecting right parameter to perform best modelling.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
